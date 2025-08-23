@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as validations from "/Users/Matheus/Desktop/code/Tasky/todo-front/src/utils/validations";
 
 /*
   O projeto inicia com a criação de um componente de formulário para receber o valor que o usuário
@@ -42,42 +43,54 @@ import { useState } from "react";
 
 */
 
+//Aqui seta todos valores do inputs
 function TaskForm() {
   const [tarefa, setTarefa] = useState({
     titulo: '',
     descricao: '',
-    dataFinalizacao: ''
+    dataFinal: ''
   });
 
+  //Criada uma lista de tarefas temporaria
+  //Toda essa logica vai ser alterada com a entrada do BD
   const [listaDeTarefas, setListaDeTarefas] = useState([]);
 
+  //A função handleChange lida com as mudanças feitas nos inputs
   const handleChange = (event) => {
     const {name, value} = event.target;
     setTarefa({...tarefa, [name]: value});
   };
 
+  //Ja a handleSubmit lida com o click no botao para enviar
   const handleSubmit = (event) => {
     event.preventDefault();
-    console.log("O titulo atual é: " + tarefa.titulo);
-    console.log("A descrição foi criada");
-    console.log("A data de finalização é: " + tarefa.dataFinalizacao)
 
-    if (!tarefa.titulo) {
-      console.log("O título não pode ser vazio");
+    //Aqui e criada a constante com todas as validações
+    const titleError = validations.validateTitle(tarefa.titulo);
+    const dateError = validations.validateDate(tarefa.dataFinal);
+    const duplicatesError = validations.validateDuplicate(listaDeTarefas, tarefa.titulo);
+
+    //E se alguma validação retornar erro ele é verificado agora
+    if (titleError) {
+      console.log(titleError);
       return;
     }
-    const dataCriacao = new Date()
-    const tempData = new Date(tarefa.dataFinalizacao)
-    if (tempData < dataCriacao){
-      console.log("Erro na marcação de datas");
+    
+    if (dateError){
+      console.log(dateError);
       return;
     }
 
-    if (listaDeTarefas.some(item => item.titulo.toLowerCase() === item.titulo.toLowerCase())) {
-    console.log("Já existe uma tarefa com esse título!");
+    if (duplicatesError) {
+    console.log(duplicatesError);
     return;
     }
 
+    console.log("O titulo atual é: " + tarefa.titulo);
+    console.log("A descrição foi criada");
+    console.log("A data de finalização é: " + tarefa.dataFinal);
+
+    //O fetch faz a ligação com a API e cria a tarefa no servidor
     fetch("http://localhost:3000/tarefas/criar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -86,7 +99,7 @@ function TaskForm() {
       .then((response) => response.json())
       .then((data) => {
         setListaDeTarefas([...listaDeTarefas, data]);
-        setTarefa({ titulo: '', descricao: '', dataFinalizacao: '' });
+        setTarefa({ titulo: '', descricao: '', dataFinal: '' });
         console.log("Titulo aadicionado a lista e valor retornado para vazio")
       })
       .catch((error) => {
@@ -117,11 +130,10 @@ function TaskForm() {
 
         <input 
           type="date"
-          name="dataFinalizacao"
-          value={tarefa.dataFinalizacao}
+          name="dataFinal"
+          value={tarefa.dataFinal}
           onChange={handleChange} 
         />
-
 
         <button name="button" formMethod="post" type="submit">
           Criar tarefa
