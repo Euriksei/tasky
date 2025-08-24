@@ -15,8 +15,7 @@ db.run(`
         descricao TEXT,
         entrega TEXT,
         concluido INTEGER
-    )
-`, (err) => { // AQUI é onde o callback de erro começa
+    )`, (err) => { // AQUI é onde o callback de erro começa
     if (err) {
         console.error(err.message);
     } else {

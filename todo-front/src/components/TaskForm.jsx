@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import './TaskForm.css'; // Importa os estilos que você acabou de criar
 
 // Array de cores para os cards
-const cardColors = ['yellow', 'blue', 'pink', 'orange'];
+const cardColors = ['yellow', 'blue', 'pink', 'orange', 'LightSeaGreen', 'PaleGreen', 'Wheat', 'MediumPurple', 'LightCoral'];
 
 function TaskForm() {
   // State para os campos do formulário
