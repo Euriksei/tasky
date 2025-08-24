@@ -8,6 +8,6 @@ const todoController = require('../controllers/todoController');
 router.post('/criar', todoController.criarTarefa);
 router.get('/listar', todoController.listarTarefa);
 router.put('/editar/:id', todoController.editarTarefa);
-router.delete('/deletar/:titulo', todoController.deletarTarefa);
+router.delete('/deletar/:id', todoController.deletarTarefa);
 
 module.exports = router;

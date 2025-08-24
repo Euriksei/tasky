@@ -1,5 +1,28 @@
-//aqui eu crio a lista que salva todas as tarefas
-const ToDo = [];
+//Trocando a lista pelo SQLlite
+const sqlite3 = require('sqlite3').verbose()
+const db = new sqlite3.Database('./database.db', (err) => {
+    if(err) {
+        console.error(err.message);
+    }
+    console.log("Conectado ao Banco de Dados");
+});
+
+//Comando que cria as tabelas
+db.run(`
+    CREATE TABLE IF NOT EXISTS tarefas (
+        id TEXT PRIMARY KEY,
+        titulo TEXT NOT NULL,
+        descricao TEXT,
+        entrega TEXT,
+        concluido INTEGER
+    )
+`, (err) => { // AQUI é onde o callback de erro começa
+    if (err) {
+        console.error(err.message);
+    } else {
+        console.log('Tabela "tarefas" pronta.');
+    }
+});
 
 //criando uma rota para adicionar tarefas
 const criarTarefa = (req, res) => {
@@ -18,103 +41,159 @@ const criarTarefa = (req, res) => {
     }
 
     // Impedir títulos duplicados
-    const tituloJaExiste = ToDo.find(t => t.titulo.toLowerCase() === titulo.toLowerCase());
-    if (tituloJaExiste) {
-        return res.status(400).json({ erro: 'Já existe uma tarefa com esse título' });
-    }
+    //db.get() retorna apenas a primeira linha encontrada
+    db.get("SELECT * FROM tarefas WHERE lower(titulo) = ?",[titulo.toLowerCase()], (err, row) =>{
+        if(err){
+            console.log(err.message);
+            return res.status(500).json({erro:'Erro interno do servidor'});
+        }
+        //Se 'row' não for nulo, significa que um título duplicado foi encontrado
+        if(row){
+            return res.status(400).json({erro: 'Ja existe uma tarefa com esse nome'});
+        }
+    })
 
     //Gerar um valor de ID (numero aleatorio de 1 a 1000 (ainda tera melhorias))
     var ID = Math.floor(Math.random()*1001)
-    while(ToDo.find(i => i.id === ID)){
-        ID = Math.floor(Math.random()*1001)
-    }
-
-    //Aqui cria a tarefa com o titulo
-    //A condiçoes de concluido como falso é gerado por padrao, sendo possivel a alteração pelo usuario mais tarde
+    const idString = "#" + ID;
+    
     const novaTarefa = {
-        id: "#"+ID,
+        id: idString,
         titulo: titulo,
         descricao: descricao,
         entrega: dataFinal,
-        concluido: false
+        concluido: 0
     }
     
-    //LOGs DE TESTE 
-    console.log('Log do objeto completo:', novaTarefa);
-    console.log('Log de teste: Funcionou!');
-    
-    //Leva a nova tarefa para dentro da lista
-    ToDo.push(novaTarefa)
-    console.log('Tarefa criada com sucesso')
-    return res.status(201).json(novaTarefa)
+    //Executa o comando para criar
+    //Aqui começa a utilização do BD
+    const sql = `INSERT INTO tarefas (id, titulo, descricao, entrega, concluido) VALUES (?, ?, ?, ?, ?)`;
+    db.run(sql, [novaTarefa.id, novaTarefa.titulo, novaTarefa.descricao, novaTarefa.entrega, novaTarefa.concluido],
+        function (err){
+            if(err){
+                console.log(err.message)
+                return res.status(400).json({erro: 'Já existe uma tarefa com esse nome'});
+            }
+
+            console.log(`Tarefa com id ${novaTarefa.id} foi criada com sucesso.`);
+            // Enviamos a nova tarefa de volta para o frontend.
+            return res.status(201).json(novaTarefa);
+        }
+    );
 };
 
     
 //Criando uma rota para listar as tarefas
 //Simplesmente imprime o arquivo
 const listarTarefa = (req, res) => {
-    res.json(ToDo);
+    const sql = "SELECT * FROM tarefas";
+    db.all(sql, [], (err, rows) => {
+        if(err){
+            console.log(err.message)
+            return res.status(500).json({erro: 'Erro ao listar'});
+        }
+        res.json(rows);
+    });
 };
 
 //Criando a rota para alterar
 //Para alterar é necessario buscar a tarefa pelo seu numero de ID direto no paremetro URL da requisição
 //(tera melhorias)
+//Criando a rota para alterar
 const editarTarefa = (req, res) => {
+    //Pega o ID da URL e os dados do corpo da requisição
     const id = '#'+ req.params.id;
     const {titulo, descricao, dataFinal, concluido} = req.body;
-
-    //Procurando a tarefa pelo ID na LIsta
-    //Irei adicionar um melhoria fazendo que seja possivel a busca pelo titulo
-    const tarefa = ToDo.find(t => t.id === id);
-        
-    //Verificação se existe tal tarefa
-    if(!tarefa){
-        return res.status(404).json({error:'Item não encontrado'});
+    console.log("Valor de dataFinal recebido:", dataFinal);
+    // Verificamos se o ID foi fornecido
+    if (!id) {
+        return res.status(400).json({ error: "O ID da tarefa é obrigatório." });
     }
 
-    //Verificar se o usuario deseja a edição do titulo, se ele deixar o campo em branco, o titulo anterior sera mantido
-    if(titulo){
-        tarefa.titulo = titulo;
-    }
+    //Preparamos a consulta e os parâmetros de forma dinâmica
+    const updates = [];
+    const params = [];
 
-    //A mesma logica a seguir.
-    if(descricao){
-        tarefa.descricao = descricao;
+    if (titulo) {
+        updates.push("titulo = ?");
+        params.push(titulo);
     }
-
-    if(dataFinal){
-        tarefa.dataFinal = dataFinal;
+    if (descricao) {
+        updates.push("descricao = ?");
+        params.push(descricao);
     }
+    // Lembre-se, o campo no BD é 'entrega', não 'dataFinal'
+    if (dataFinal) {
+        updates.push("entrega = ?");
+        params.push(dataFinal);
+    }
+    // No SQLite, 0 é false e 1 é true
+    if (concluido !== undefined) {
+        updates.push("concluido = ?");
+        params.push(concluido ? 1 : 0);
+    }
+    
+    // Se não houver nada para atualizar, retorne um erro
+    if (updates.length === 0) {
+        return res.status(400).json({ error: "Nenhum campo para atualizar foi fornecido." });
+    }
+    
+    // Adiciona o ID ao final dos parâmetros para a cláusula WHERE
+    params.push(id);
+    
+    //Monta a consulta SQL de forma dinâmica
+    const sql = `UPDATE tarefas SET ${updates.join(", ")} WHERE id = ?`;
 
-    //A edição do concluido aqui, so funciona por enquanto sem o front, quando for implementado sera necessario um alteração na logica
-    if(concluido !== undefined){
-        if(typeof concluido !== 'boolean'){
-            return res.status(400).json({erro:'O valor deve ser booleano'});
+    // Executa a atualização
+    // db.run() também é usado para UPDATES, e a função 'this.changes' retorna o número de linhas afetadas.
+    db.run(sql, params, function(err) {
+        if (err) {
+            console.error(err.message);
+            return res.status(500).json({ error: "Erro ao atualizar a tarefa." });
         }
-        tarefa.concluido = concluido;
-    }
-    console.log('Tarefa editada')
-    res.json(tarefa)
+        // Se a atualização foi bem-sucedida (e afetou 1 linha)
+        if (this.changes === 0) {
+            return res.status(404).json({ error: 'Item não encontrado ou ID incorreto.' });
+        }
+
+        console.log(`Tarefa com ID ${id} foi editada com sucesso. Linhas afetadas: ${this.changes}`);
+        // Retorna uma resposta de sucesso sem precisar buscar o item novamente.
+        res.json({ message: 'Tarefa atualizada com sucesso.' });
+    });
 };
 
 //Rota para deletar
 const deletarTarefa = (req, res) => {
-    const {titulo} = req.params;
-
-    //A rota para deletar procura pelo titulo
-    if(!titulo){
+    // Vamos usar o ID para deletar, pois é mais confiável que o título
+    const id = '#'+ req.params.id;
+    console.log("ID da requisição:", req.params.id);
+    console.log("ID a ser deletado:", id);
+    
+    // A validação de entrada é feita aqui no início
+    if(!id){
         console.log('Erro ao procurar tarefa para deletar');
-        res.status(404).json({error:'Item não encontrado'});
+        return res.status(404).json({error:'ID da tarefa não fornecido'});
     }
 
-    const tarefa = ToDo.findIndex(t => t.titulo === titulo);
-    if(tarefa === -1){
-        return res.status(404).json({error:'Item não encontrado'});
-    }
+    const sql = `DELETE FROM tarefas WHERE id = ?`;
 
-    ToDo.splice(tarefa, 1);
-    return res.json({message: 'Tarefa excluida com sucesso'})
+    // A chamada ao banco de dados é feita apenas uma vez
+    db.run(sql, [id], function(err) {
+        if(err) {
+            console.error(err.message);
+            return res.status(500).json({ error: "Erro ao deletar a tarefa"});
+        }
 
+        // Verificamos o número de linhas afetadas (deletadas)
+        if (this.changes === 0) {
+            // Se nenhuma linha foi deletada, o item não foi encontrado
+            return res.status(404).json({ error: 'Item não encontrado ou ID incorreto.' });
+        }
+
+        // Se o número de mudanças for maior que 0, a deleção foi um sucesso
+        console.log(`Tarefa com ID ${id} foi deletada com sucesso. Linhas afetadas: ${this.changes}`);
+        return res.json({message: 'Tarefa deletada com sucesso'});
+    });
 };
 
 module.exports = {
