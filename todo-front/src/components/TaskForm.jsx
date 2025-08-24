@@ -1,5 +1,141 @@
-import { useState } from "react";
-import * as validations from "/Users/Matheus/Desktop/code/Tasky/todo-front/src/utils/validations";
+import { useState, useEffect } from "react";
+import './TaskForm.css'; // Importa os estilos que você acabou de criar
+
+// Array de cores para os cards
+const cardColors = ['yellow', 'blue', 'pink', 'orange'];
+
+function TaskForm() {
+  // State para os campos do formulário
+  const [tarefa, setTarefa] = useState({
+    titulo: '',
+    descricao: '',
+    dataFinal: ''
+  });
+
+  // State para armazenar a lista de tarefas vinda da API
+  const [listaDeTarefas, setListaDeTarefas] = useState([]);
+
+  // useEffect para buscar as tarefas da API assim que o componente carregar
+  useEffect(() => {
+    fetchTasks();
+  }, []); // O array vazio [] garante que isso rode apenas uma vez
+
+  // Função para buscar as tarefas na API
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/tarefas/listar');
+      if (!response.ok) {
+        throw new Error('Erro ao buscar tarefas');
+      }
+      const tasks = await response.json();
+      setListaDeTarefas(tasks); // Atualiza o state com as tarefas
+    } catch (error) {
+      console.error('Falha na requisição:', error);
+    }
+  };
+
+  // Lida com as mudanças nos inputs do formulário
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setTarefa({ ...tarefa, [name]: value });
+  };
+
+  // Lida com o envio do formulário para criar uma nova tarefa
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    // Validação simples
+    if (!tarefa.titulo || !tarefa.dataFinal) {
+      alert('Por favor, preencha o título e a data final.');
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:3000/tarefas/criar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tarefa),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.erro || 'Erro ao criar a tarefa');
+      }
+      
+      // Limpa o formulário e busca a lista de tarefas atualizada
+      setTarefa({ titulo: '', descricao: '', dataFinal: '' });
+      fetchTasks();
+
+    } catch (error) {
+      console.error("Ocorreu um erro na requisição:", error);
+      alert(`Erro: ${error.message}`);
+    }
+  };
+
+  return (
+    <div className="app-container">
+      {/* Menu Lateral com o Formulário */}
+      <aside className="sidebar">
+        <h2>Adicionar Tarefa</h2>
+        <form onSubmit={handleSubmit} className="task-form">
+          <label htmlFor="titulo">Título</label>
+          <input
+            id="titulo"
+            name="titulo"
+            value={tarefa.titulo}
+            onChange={handleChange}
+            type="text"
+            placeholder="Ex: Planejar conteúdo"
+            required
+          />
+
+          <label htmlFor="descricao">Descrição</label>
+          <textarea
+            id="descricao"
+            name="descricao"
+            value={tarefa.descricao}
+            onChange={handleChange}
+            placeholder="Ex: Detalhes da tarefa..."
+          />
+
+          <label htmlFor="dataFinal">Data Final</label>
+          <input
+            id="dataFinal"
+            type="date"
+            name="dataFinal"
+            value={tarefa.dataFinal}
+            onChange={handleChange}
+            required
+          />
+
+          <button type="submit">Criar Tarefa</button>
+        </form>
+      </aside>
+
+      {/* Conteúdo Principal com os Cards */}
+      <main className="main-content">
+        <h1>Sticky Wall</h1>
+        <div className="task-grid">
+          {listaDeTarefas.map((task, index) => {
+            // Formata a data para DD/MM/AAAA
+            const formattedDate = task.entrega ? new Date(task.entrega).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Sem data';
+            const colorClass = cardColors[index % cardColors.length];
+            
+            return (
+              <div key={task.id} className={`task-card ${colorClass}`}>
+                <h3>{task.titulo}</h3>
+                <p>{task.descricao || 'Sem descrição.'}</p>
+                <span className="task-date">Entrega: {formattedDate}</span>
+              </div>
+            );
+          })}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+export default TaskForm;
 
 /*
   O projeto inicia com a criação de um componente de formulário para receber o valor que o usuário
@@ -42,105 +178,3 @@ import * as validations from "/Users/Matheus/Desktop/code/Tasky/todo-front/src/u
     é criado um catch logo abaixo para lidar com possiveis erros na requisição.
 
 */
-
-//Aqui seta todos valores do inputs
-function TaskForm() {
-  const [tarefa, setTarefa] = useState({
-    titulo: '',
-    descricao: '',
-    dataFinal: ''
-  });
-
-  //Criada uma lista de tarefas temporaria
-  //Toda essa logica vai ser alterada com a entrada do BD
-  const [listaDeTarefas, setListaDeTarefas] = useState([]);
-
-  //A função handleChange lida com as mudanças feitas nos inputs
-  const handleChange = (event) => {
-    const {name, value} = event.target;
-    setTarefa({...tarefa, [name]: value});
-  };
-
-  //Ja a handleSubmit lida com o click no botao para enviar
-  const handleSubmit = (event) => {
-    event.preventDefault();
-
-    //Aqui e criada a constante com todas as validações
-    const titleError = validations.validateTitle(tarefa.titulo);
-    const dateError = validations.validateDate(tarefa.dataFinal);
-    const duplicatesError = validations.validateDuplicate(listaDeTarefas, tarefa.titulo);
-
-    //E se alguma validação retornar erro ele é verificado agora
-    if (titleError) {
-      console.log(titleError);
-      return;
-    }
-    
-    if (dateError){
-      console.log(dateError);
-      return;
-    }
-
-    if (duplicatesError) {
-    console.log(duplicatesError);
-    return;
-    }
-
-    console.log("O titulo atual é: " + tarefa.titulo);
-    console.log("A descrição foi criada");
-    console.log("A data de finalização é: " + tarefa.dataFinal);
-
-    //O fetch faz a ligação com a API e cria a tarefa no servidor
-    fetch("http://localhost:3000/tarefas/criar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(tarefa),
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        setListaDeTarefas([...listaDeTarefas, data]);
-        setTarefa({ titulo: '', descricao: '', dataFinal: '' });
-        console.log("Titulo aadicionado a lista e valor retornado para vazio")
-      })
-      .catch((error) => {
-        console.error("Ocorreu um erro na requisição:", error);
-      });
-  };
-
-  return (
-    <>
-      <form onSubmit={handleSubmit}>
-        <input
-          name="titulo"
-          value={tarefa.titulo}
-          onChange={handleChange}
-          type="text"
-          autoComplete="off"
-          placeholder="Nome da tarefa"
-          required
-        />
-
-        <textarea
-          name="descricao"
-          value={tarefa.descricao}
-          onChange={handleChange}
-          autoComplete="off"
-          placeholder="Descrição da tarefa"
-        />
-
-        <input 
-          type="date"
-          name="dataFinal"
-          value={tarefa.dataFinal}
-          onChange={handleChange} 
-        />
-
-        <button name="button" formMethod="post" type="submit">
-          Criar tarefa
-        </button>
-      </form>
-    </>
-  );
-}
-
-export default TaskForm;
