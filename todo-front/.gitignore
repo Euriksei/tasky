@@ -1,42 +1,31 @@
-# Logs
-logs
-*.log
+# Dependências e logs
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+*.log
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# Dependências
-node_modules/
-
-# Pastas de build
+# Build da aplicação
 dist/
+dist-ssr/
 build/
 
 # Arquivos de ambiente
 .env
 .env.local
 
-# Arquivos de log e cache
-*.log
-.npm/
-
-# Outros arquivos do sistema
+# Arquivos de banco de dados e sistema
+*.sqlite
 .DS_Store
+
+# Editor de código
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
