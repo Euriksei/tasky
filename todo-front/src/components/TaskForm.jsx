@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import './TaskForm.css'; // Importa os estilos que você acabou de criar
 
 // Array de cores para os cards
-const cardColors = ['yellow', 'blue', 'pink', 'orange', 'LightSeaGreen', 'PaleGreen', 'Wheat', 'MediumPurple', 'LightCoral'];
+const cardColors = ['yellow', 'blue', 'pink', 'orange', 'dodgerblue', 'mediumacquamarine', 'palegreen', 'burlywood' ];
 
 function TaskForm() {
   // State para os campos do formulário
@@ -114,7 +114,7 @@ function TaskForm() {
 
       {/* Conteúdo Principal com os Cards */}
       <main className="main-content">
-        <h1>Sticky Wall</h1>
+        <h1>Minhas Tarefas</h1>
         <div className="task-grid">
           {listaDeTarefas.map((task, index) => {
             // Formata a data para DD/MM/AAAA

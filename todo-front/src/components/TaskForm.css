@@ -130,3 +130,7 @@ body {
 .task-card.blue   { background-color: #e6f7ff; border-left: 4px solid #91d5ff; }
 .task-card.pink   { background-color: #fff0f6; border-left: 4px solid #ffadd2; }
 .task-card.orange { background-color: #fff7e6; border-left: 4px solid #ffd591; }
+.task-card.dodgerblue       { background-color: #e3f2ff; border-left: 4px solid #1e90ff; }
+.task-card.mediumaquamarine { background-color: #effcf5; border-left: 4px solid #66cdaa; }
+.task-card.palegreen        { background-color: #f2fff2; border-left: 4px solid #98fb98; }
+.task-card.burlywood        { background-color: #fff9f0; border-left: 4px solid #deb887; }
