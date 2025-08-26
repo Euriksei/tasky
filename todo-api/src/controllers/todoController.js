@@ -25,60 +25,54 @@ db.run(`
 
 //criando uma rota para adicionar tarefas
 const criarTarefa = (req, res) => {
-    const {titulo, descricao, dataFinal} = req.body; //Pegar titulo da tarefa no body da requisição
-    const dataCriacao = new Date().setHours(0,0,0,0);//a data de criação é pegada automaticamente e setado seus valores de hora para 00:00
+    const { titulo, descricao, dataFinal } = req.body;
+    const dataCriacao = new Date().setHours(0, 0, 0, 0);
 
-    //Vilidações
-    //Impedir que o titulo seja vazio
-    if(!titulo){
-        return res.status(400).json({erro: 'O título é obrigatório'});
+    // Validações básicas (síncronas)
+    if (!titulo) {
+        return res.status(400).json({ erro: 'O título é obrigatório' });
     }
 
-    //Impedir que a data final seja no passado (ainda requer correçoes)
-    if(new Date(dataFinal).setHours(0,0,0,0) < dataCriacao){
-        return res.status(400).json({erro: 'Erro na marcação de datas'});
+    if (dataFinal && new Date(dataFinal).setHours(0, 0, 0, 0) < dataCriacao) {
+        return res.status(400).json({ erro: 'Erro na marcação de datas' });
     }
 
-    // Impedir títulos duplicados
-    //db.get() retorna apenas a primeira linha encontrada
-    db.get("SELECT * FROM tarefas WHERE lower(titulo) = ?",[titulo.toLowerCase()], (err, row) =>{
-        if(err){
-            console.log(err.message);
-            return res.status(500).json({erro:'Erro interno do servidor'});
+    // 1. PRIMEIRO: Verificar se o título já existe
+    const sqlCheck = "SELECT titulo FROM tarefas WHERE lower(titulo) = ?";
+    db.get(sqlCheck, [titulo.toLowerCase()], (err, row) => {
+        if (err) {
+            console.error(err.message);
+            return res.status(500).json({ erro: 'Erro interno do servidor' });
         }
-        //Se 'row' não for nulo, significa que um título duplicado foi encontrado
-        if(row){
-            return res.status(400).json({erro: 'Ja existe uma tarefa com esse nome'});
-        }
-    })
 
-    //Gerar um valor de ID (numero aleatorio de 1 a 1000 (ainda tera melhorias))
-    var ID = Math.floor(Math.random()*1001)
-    const idString = "#" + ID;
-    
-    const novaTarefa = {
-        id: idString,
-        titulo: titulo,
-        descricao: descricao,
-        entrega: dataFinal,
-        concluido: 0
-    }
-    
-    //Executa o comando para criar
-    //Aqui começa a utilização do BD
-    const sql = `INSERT INTO tarefas (id, titulo, descricao, entrega, concluido) VALUES (?, ?, ?, ?, ?)`;
-    db.run(sql, [novaTarefa.id, novaTarefa.titulo, novaTarefa.descricao, novaTarefa.entrega, novaTarefa.concluido],
-        function (err){
-            if(err){
-                console.log(err.message)
-                return res.status(400).json({erro: 'Já existe uma tarefa com esse nome'});
+        // Se 'row' existir, o título é duplicado. Enviamos o erro e paramos.
+        if (row) {
+            return res.status(400).json({ erro: 'Já existe uma tarefa com esse nome' });
+        }
+
+        // 2. SEGUNDO: Se não for duplicado, continuamos para criar a tarefa
+        const ID = Math.floor(Math.random() * 1001);
+        const idString = "#" + ID;
+
+        const novaTarefa = {
+            id: idString,
+            titulo: titulo,
+            descricao: descricao,
+            entrega: dataFinal,
+            concluido: 0
+        };
+
+        const sqlInsert = `INSERT INTO tarefas (id, titulo, descricao, entrega, concluido) VALUES (?, ?, ?, ?, ?)`;
+
+        db.run(sqlInsert, [novaTarefa.id, novaTarefa.titulo, novaTarefa.descricao, novaTarefa.entrega, novaTarefa.concluido], function (err) {
+            if (err) {
+                console.error(err.message);
+                return res.status(500).json({ erro: 'Erro ao criar a tarefa.' });
             }
-
             console.log(`Tarefa com id ${novaTarefa.id} foi criada com sucesso.`);
-            // Enviamos a nova tarefa de volta para o frontend.
             return res.status(201).json(novaTarefa);
-        }
-    );
+        });
+    });
 };
 
     
